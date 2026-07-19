@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/useAuth'
 import { ApiError } from '../api/client'
+import { Spinner } from '../components/Spinner'
 import { registerSchema, type RegisterFormValues } from '../schemas/authSchemas'
 
 export function SignupPage() {
@@ -29,44 +30,49 @@ export function SignupPage() {
 
   return (
     <div className="auth-page">
-      <h1>Create your account</h1>
-      <p className="auth-subtitle">
-        Parents only — you'll add your child's details after signing up. Your child never needs their own login.
-      </p>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <label>
-          Your name
-          <input type="text" autoComplete="name" {...register('full_name')} />
-          {errors.full_name && <span className="field-error">{errors.full_name.message}</span>}
-        </label>
+      <div className="card auth-card">
+        <span className="auth-brand" aria-hidden="true">
+          🌱
+        </span>
+        <h1>Create your account</h1>
+        <p className="auth-subtitle">
+          Parents only — you'll add your child's details after signing up. Your child never needs their own login.
+        </p>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <label>
+            Your name
+            <input type="text" autoComplete="name" {...register('full_name')} />
+            {errors.full_name && <span className="field-error">{errors.full_name.message}</span>}
+          </label>
 
-        <label>
-          Email
-          <input type="email" autoComplete="email" {...register('email')} />
-          {errors.email && <span className="field-error">{errors.email.message}</span>}
-        </label>
+          <label>
+            Email
+            <input type="email" autoComplete="email" {...register('email')} />
+            {errors.email && <span className="field-error">{errors.email.message}</span>}
+          </label>
 
-        <label>
-          Password
-          <input type="password" autoComplete="new-password" {...register('password')} />
-          {errors.password && <span className="field-error">{errors.password.message}</span>}
-        </label>
+          <label>
+            Password
+            <input type="password" autoComplete="new-password" {...register('password')} />
+            {errors.password && <span className="field-error">{errors.password.message}</span>}
+          </label>
 
-        <label>
-          Confirm password
-          <input type="password" autoComplete="new-password" {...register('confirmPassword')} />
-          {errors.confirmPassword && <span className="field-error">{errors.confirmPassword.message}</span>}
-        </label>
+          <label>
+            Confirm password
+            <input type="password" autoComplete="new-password" {...register('confirmPassword')} />
+            {errors.confirmPassword && <span className="field-error">{errors.confirmPassword.message}</span>}
+          </label>
 
-        {serverError && <p className="form-error">{serverError}</p>}
+          {serverError && <p className="form-error">{serverError}</p>}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating account…' : 'Create account'}
-        </button>
-      </form>
-      <p>
-        Already have an account? <Link to="/login">Log in</Link>
-      </p>
+          <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
+            {isSubmitting ? <Spinner label="Creating account…" /> : 'Create account'}
+          </button>
+        </form>
+        <p className="auth-switch">
+          Already have an account? <Link to="/login">Log in</Link>
+        </p>
+      </div>
     </div>
   )
 }

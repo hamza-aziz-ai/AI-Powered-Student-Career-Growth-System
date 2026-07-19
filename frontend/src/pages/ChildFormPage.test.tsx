@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { childrenApi } from '../api/children'
+import { useAuth } from '../auth/useAuth'
 import { ChildFormPage } from './ChildFormPage'
 
 vi.mock('../api/children', () => ({
@@ -16,9 +17,29 @@ vi.mock('../api/children', () => ({
   },
 }))
 
+// AppHeader (rendered by ChildFormPage) reads useAuth for the greeting/logout
+// button — mock it directly rather than standing up a real AuthProvider.
+vi.mock('../auth/useAuth')
+
 const mockedChildrenApi = vi.mocked(childrenApi)
+const mockedUseAuth = vi.mocked(useAuth)
 
 function renderNewChildForm() {
+  mockedUseAuth.mockReturnValue({
+    user: {
+      id: 'user-1',
+      email: 'parent@example.com',
+      full_name: 'Test Parent',
+      is_active: true,
+      is_email_verified: false,
+      created_at: '2026-01-01T00:00:00Z',
+    },
+    status: 'authenticated',
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  })
+
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={queryClient}>

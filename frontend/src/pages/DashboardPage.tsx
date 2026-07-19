@@ -1,50 +1,81 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { childrenApi } from '../api/children'
+import { AppHeader } from '../components/AppHeader'
+import { Spinner } from '../components/Spinner'
 import { useAuth } from '../auth/useAuth'
 
 export function DashboardPage() {
-  const { user, logout } = useAuth()
-  const { data: children, isLoading, isError } = useQuery({
+  const { user } = useAuth()
+  const {
+    data: children,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['children'],
     queryFn: childrenApi.list,
   })
 
   return (
-    <div className="dashboard-page">
-      <header className="dashboard-header">
-        <h1>Welcome, {user?.full_name}</h1>
-        <button type="button" onClick={() => void logout()}>
-          Log out
-        </button>
-      </header>
+    <>
+      <AppHeader />
+      <div className="page-container">
+        <div className="dashboard-toolbar">
+          <div>
+            <h1>Hi, {user?.full_name.split(' ')[0]} 👋</h1>
+            <p className="dashboard-subtitle">Here are the children you're tracking career insights for.</p>
+          </div>
+          <Link to="/children/new" className="btn btn-primary">
+            + Add child
+          </Link>
+        </div>
 
-      <div className="dashboard-toolbar">
-        <Link to="/children/new" className="button-link">
-          + Add child
-        </Link>
+        {isLoading && (
+          <p className="page-loading">
+            <Spinner label="Loading your children…" />
+          </p>
+        )}
+        {isError && <p className="form-error">Couldn't load your children. Please refresh.</p>}
+
+        {children && children.length === 0 && (
+          <div className="empty-state card">
+            <span className="empty-state-icon" aria-hidden="true">
+              🧒
+            </span>
+            <p>You haven't added a child yet.</p>
+            <p>Add one to get started with personalized career insights.</p>
+          </div>
+        )}
+
+        <ul className="child-card-list">
+          {children?.map((child) => (
+            <li key={child.id} className="child-card card">
+              <div className="child-card-top">
+                <span className="child-avatar" aria-hidden="true">
+                  {child.first_name.charAt(0).toUpperCase()}
+                </span>
+                <div>
+                  <h2>{child.first_name}</h2>
+                  <p className="child-card-grade">{child.grade_level ?? 'Grade not specified'}</p>
+                </div>
+              </div>
+              {child.interests.length > 0 && (
+                <div className="tag-pills">
+                  {child.interests.slice(0, 4).map((interest) => (
+                    <span key={interest} className="tag-pill">
+                      {interest}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="child-card-actions">
+                <Link to={`/children/${child.id}/insights`}>View insights</Link>
+                <Link to={`/children/${child.id}/edit`}>Edit</Link>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
-
-      {isLoading && <p>Loading your children…</p>}
-      {isError && <p className="form-error">Couldn't load your children. Please refresh.</p>}
-
-      {children && children.length === 0 && (
-        <p>You haven't added a child yet. Add one to get started with career insights.</p>
-      )}
-
-      <ul className="child-card-list">
-        {children?.map((child) => (
-          <li key={child.id} className="child-card">
-            <h2>{child.first_name}</h2>
-            <p>{child.grade_level ?? 'Grade not specified'}</p>
-            {child.interests.length > 0 && <p className="child-card-tags">Interests: {child.interests.join(', ')}</p>}
-            <div className="child-card-actions">
-              <Link to={`/children/${child.id}/insights`}>View insights</Link>
-              <Link to={`/children/${child.id}/edit`}>Edit</Link>
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </>
   )
 }

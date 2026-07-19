@@ -5,6 +5,8 @@ import { Controller, useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
 import { childrenApi } from '../api/children'
 import { ApiError } from '../api/client'
+import { AppHeader } from '../components/AppHeader'
+import { Spinner } from '../components/Spinner'
 import { TagInput } from '../components/TagInput'
 import { childProfileSchema, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR, type ChildProfileFormValues } from '../schemas/childProfileSchema'
 import type { Child } from '../api/types'
@@ -95,89 +97,107 @@ export function ChildFormPage() {
     }
   }
 
-  if (isEditing && isLoadingChild) {
-    return <p className="page-loading">Loading…</p>
-  }
-
   return (
-    <div className="auth-page">
-      <h1>{isEditing ? 'Edit child profile' : 'Add a child'}</h1>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <label>
-          First name
-          <input type="text" {...register('first_name')} />
-          {errors.first_name && <span className="field-error">{errors.first_name.message}</span>}
-        </label>
+    <>
+      <AppHeader backTo={{ to: '/dashboard', label: 'Dashboard' }} />
+      <div className="page-container page-container-narrow">
+        {isEditing && isLoadingChild ? (
+          <p className="page-loading">
+            <Spinner label="Loading…" />
+          </p>
+        ) : (
+          <div className="card">
+            <h1>{isEditing ? 'Edit child profile' : 'Add a child'}</h1>
+            <p className="auth-subtitle">
+              Only what's needed to generate helpful, age-appropriate insights — no photos, no school name.
+            </p>
+            <form onSubmit={handleSubmit(onSubmit)} noValidate>
+              <div className="field-row">
+                <label>
+                  First name
+                  <input type="text" {...register('first_name')} />
+                  {errors.first_name && <span className="field-error">{errors.first_name.message}</span>}
+                </label>
 
-        <label>
-          Birth year
-          <input
-            type="number"
-            min={MIN_BIRTH_YEAR}
-            max={MAX_BIRTH_YEAR}
-            {...register('birth_year', { valueAsNumber: true })}
-          />
-          {errors.birth_year && <span className="field-error">{errors.birth_year.message}</span>}
-        </label>
+                <label>
+                  Birth year
+                  <input
+                    type="number"
+                    min={MIN_BIRTH_YEAR}
+                    max={MAX_BIRTH_YEAR}
+                    {...register('birth_year', { valueAsNumber: true })}
+                  />
+                  {errors.birth_year && <span className="field-error">{errors.birth_year.message}</span>}
+                </label>
+              </div>
 
-        <label>
-          Grade level
-          <input type="text" placeholder="e.g. 5th grade" {...register('grade_level')} />
-        </label>
+              <label>
+                Grade level
+                <input type="text" placeholder="e.g. 5th grade" {...register('grade_level')} />
+              </label>
 
-        <label>
-          Interests
-          <Controller
-            control={control}
-            name="interests"
-            render={({ field }) => (
-              <TagInput value={field.value ?? []} onChange={field.onChange} placeholder="Type and press Enter" />
-            )}
-          />
-          {tagListErrorMessage(errors.interests) && (
-            <span className="field-error">{tagListErrorMessage(errors.interests)}</span>
-          )}
-        </label>
+              <label>
+                Interests
+                <Controller
+                  control={control}
+                  name="interests"
+                  render={({ field }) => (
+                    <TagInput value={field.value ?? []} onChange={field.onChange} placeholder="Type and press Enter" />
+                  )}
+                />
+                {tagListErrorMessage(errors.interests) && (
+                  <span className="field-error">{tagListErrorMessage(errors.interests)}</span>
+                )}
+              </label>
 
-        <label>
-          Strengths
-          <Controller
-            control={control}
-            name="strengths"
-            render={({ field }) => (
-              <TagInput value={field.value ?? []} onChange={field.onChange} placeholder="Type and press Enter" />
-            )}
-          />
-          {tagListErrorMessage(errors.strengths) && (
-            <span className="field-error">{tagListErrorMessage(errors.strengths)}</span>
-          )}
-        </label>
+              <label>
+                Strengths
+                <Controller
+                  control={control}
+                  name="strengths"
+                  render={({ field }) => (
+                    <TagInput value={field.value ?? []} onChange={field.onChange} placeholder="Type and press Enter" />
+                  )}
+                />
+                {tagListErrorMessage(errors.strengths) && (
+                  <span className="field-error">{tagListErrorMessage(errors.strengths)}</span>
+                )}
+              </label>
 
-        <label>
-          Favorite subjects (optional)
-          <Controller
-            control={control}
-            name="favorite_subjects"
-            render={({ field }) => (
-              <TagInput value={field.value ?? []} onChange={field.onChange} placeholder="Type and press Enter" />
-            )}
-          />
-          {tagListErrorMessage(errors.favorite_subjects) && (
-            <span className="field-error">{tagListErrorMessage(errors.favorite_subjects)}</span>
-          )}
-        </label>
+              <label>
+                Favorite subjects (optional)
+                <Controller
+                  control={control}
+                  name="favorite_subjects"
+                  render={({ field }) => (
+                    <TagInput value={field.value ?? []} onChange={field.onChange} placeholder="Type and press Enter" />
+                  )}
+                />
+                {tagListErrorMessage(errors.favorite_subjects) && (
+                  <span className="field-error">{tagListErrorMessage(errors.favorite_subjects)}</span>
+                )}
+              </label>
 
-        <label>
-          Notes for the AI (optional)
-          <textarea rows={3} maxLength={1000} {...register('notes')} />
-        </label>
+              <label>
+                Notes for the AI (optional)
+                <textarea rows={3} maxLength={1000} {...register('notes')} />
+              </label>
 
-        {serverError && <p className="form-error">{serverError}</p>}
+              {serverError && <p className="form-error">{serverError}</p>}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving…' : isEditing ? 'Save changes' : 'Add child'}
-        </button>
-      </form>
-    </div>
+              <button type="submit" className="btn btn-primary btn-block" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <Spinner label="Saving…" />
+                ) : isEditing ? (
+                  'Save changes'
+                ) : (
+                  'Add child'
+                )}
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
