@@ -603,3 +603,7 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# AI Agents
+CLAUDE.md
+.claude

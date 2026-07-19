@@ -5,10 +5,26 @@ name = "pypi"
 
 [packages]
 python-dotenv = "*"
+fastapi = "*"
+psycopg2-binary = "*"
+ollama = "*"
+pydantic-settings = "*"
+uvicorn = "*"
+sqlalchemy = "*"
+greenlet = "*"
+asyncpg = "*"
+alembic = "*"
+passlib = "*"
+argon2-cffi = "*"
+pyjwt = "*"
+httpx = "*"
+slowapi = "*"
 
 [dev-packages]
 pytest = "*"
+pytest-asyncio = "*"
 jupyter = "*"
+graphifyy = "*"
 
 [requires]
 python_version = "3.14"

@@ -1,0 +1,213 @@
+.auth-page {
+  max-width: 420px;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+}
+
+.auth-page h1 {
+  margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+  color: #555;
+  margin-bottom: 1.5rem;
+}
+
+.auth-page form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth-page label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.auth-page input {
+  font-size: 1rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.auth-page button {
+  margin-top: 0.5rem;
+  padding: 0.65rem;
+  font-size: 1rem;
+  border-radius: 6px;
+  border: none;
+  background: #2f6f4f;
+  color: white;
+  cursor: pointer;
+}
+
+.auth-page button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.field-error {
+  color: #b3261e;
+  font-weight: 500;
+  font-size: 0.8rem;
+}
+
+.form-error {
+  color: #b3261e;
+  font-weight: 500;
+}
+
+.page-loading {
+  text-align: center;
+  margin-top: 4rem;
+}
+
+.dashboard-page {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.dashboard-toolbar {
+  margin-bottom: 1.5rem;
+}
+
+.button-link {
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  background: #2f6f4f;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.child-card-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.child-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.child-card h2 {
+  margin: 0 0 0.25rem;
+}
+
+.child-card-tags {
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.child-card-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.auth-page textarea {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.tag-input-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 0.4rem;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: #e6efe9;
+  color: #1f4a34;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.tag-chip button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  color: inherit;
+}
+
+.tag-input-chips input {
+  border: none;
+  outline: none;
+  flex: 1;
+  min-width: 120px;
+  font: inherit;
+  padding: 0.2rem;
+}
+
+.insight-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.insight-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.insight-date {
+  color: #777;
+  font-size: 0.8rem;
+  margin-top: 0;
+}
+
+.career-suggestions {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.career-suggestion {
+  border-left: 3px solid #2f6f4f;
+  padding-left: 0.75rem;
+}
+
+.career-suggestion h3 {
+  margin: 0 0 0.25rem;
+}
+
+.insight-disclaimer {
+  color: #777;
+  font-size: 0.8rem;
+  font-style: italic;
+}
