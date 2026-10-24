@@ -1,9 +1,12 @@
+import asyncio
 import json
 
 import httpx
 import ollama
+from pydantic import ValidationError
 
 from app.core.config import get_settings
+from app.schemas.insight import InsightResult
 
 settings = get_settings()
 
@@ -37,9 +40,11 @@ class OllamaResponseError(Exception):
 
 
 def _build_user_prompt(profile: dict) -> str:
-    """Builds the prompt sent to the (cloud-hosted) model. Deliberately excludes the
-    child's first_name — the model only ever sees age band, grade, and tags, since this
-    request leaves the machine when using a `*-cloud` Ollama model."""
+    """Builds the prompt sent to the (cloud-hosted) model. This request leaves the
+    machine when using a `*-cloud` Ollama model, so it carries only an approximate age,
+    grade, and tag lists. The child's first_name and the parent's free-text notes are
+    never included. Tags and grade are still parent-typed text, so this is data
+    minimisation, not anonymisation."""
     lines = [
         f"Child's age band: approximately {profile['age']} years old.",
         f"Grade level: {profile.get('grade_level') or 'not specified'}.",
@@ -48,32 +53,35 @@ def _build_user_prompt(profile: dict) -> str:
     ]
     if profile.get("favorite_subjects"):
         lines.append(f"Favorite subjects: {', '.join(profile['favorite_subjects'])}.")
-    if profile.get("notes"):
-        lines.append(f"Additional context from parent: {profile['notes']}.")
     return "\n".join(lines)
 
 
 async def generate_career_insight(profile: dict) -> dict:
-    """Calls the local Ollama HTTP API and returns the parsed structured insight dict.
+    """Calls the local Ollama HTTP API and returns the validated structured insight dict.
 
     Raises OllamaUnavailableError on connection/timeout issues, OllamaResponseError on
-    a malformed or non-JSON response. Callers are responsible for persisting failure
-    state — this function never touches the database.
+    a response that is empty, not JSON, or not the InsightResult shape. Callers are
+    responsible for persisting failure state — this function never touches the database.
     """
     client = ollama.AsyncClient(host=settings.ollama_base_url, timeout=settings.ollama_timeout_seconds)
 
     try:
-        response = await client.chat(
-            model=settings.ollama_model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": _build_user_prompt(profile)},
-            ],
-            format="json",
-            stream=False,
-        )
-    except (httpx.TimeoutException, httpx.ConnectError) as exc:
-        raise OllamaUnavailableError(str(exc)) from exc
+        # httpx's timeout bounds each network phase, not the whole call; this bounds
+        # wall-clock time so a stale pending row can be safely expired (insight_service).
+        async with asyncio.timeout(settings.ollama_timeout_seconds):
+            response = await client.chat(
+                model=settings.ollama_model,
+                messages=[
+                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "user", "content": _build_user_prompt(profile)},
+                ],
+                format="json",
+                stream=False,
+            )
+    # The ollama SDK re-raises connection failures as the builtin ConnectionError
+    # (not httpx.ConnectError), so both are mapped here.
+    except (TimeoutError, httpx.TimeoutException, httpx.ConnectError, ConnectionError) as exc:
+        raise OllamaUnavailableError(type(exc).__name__) from exc
     except ollama.ResponseError as exc:
         raise OllamaResponseError(str(exc)) from exc
 
@@ -83,6 +91,13 @@ async def generate_career_insight(profile: dict) -> dict:
         raise OllamaResponseError("Empty response from model")
 
     try:
-        return json.loads(content)
+        parsed = json.loads(content)
     except json.JSONDecodeError as exc:
         raise OllamaResponseError(f"Model did not return valid JSON: {exc}") from exc
+
+    try:
+        return InsightResult.model_validate(parsed).model_dump()
+    except ValidationError as exc:
+        # Report only the error count: the validation details echo model output,
+        # which can contain child data and must not reach logs.
+        raise OllamaResponseError(f"Model JSON did not match the insight schema ({exc.error_count()} errors)") from None

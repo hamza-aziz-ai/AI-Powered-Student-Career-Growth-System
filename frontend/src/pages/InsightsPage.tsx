@@ -5,6 +5,73 @@ import { ApiError } from '../api/client'
 import { insightsApi } from '../api/insights'
 import { AppHeader } from '../components/AppHeader'
 import { Spinner } from '../components/Spinner'
+// The backend validates new results, but rows saved before that validation existed can
+// hold anything (null items, objects where text belongs). Render only values of the
+// expected type and skip the rest.
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function asText(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
+function asTextList(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item !== '') : []
+}
+
+function InsightResultView({ result }: { result: unknown }) {
+  const data = isRecord(result) ? result : {}
+  const summary = asText(data.summary)
+  const disclaimer = asText(data.disclaimer)
+  const growthAreas = asTextList(data.growth_areas)
+  const suggestions = (Array.isArray(data.career_suggestions) ? data.career_suggestions : [])
+    .filter(isRecord)
+    .map((suggestion) => ({
+      title: asText(suggestion.title),
+      rationale: asText(suggestion.rationale),
+      subjects: asTextList(suggestion.related_subjects),
+      activities: asTextList(suggestion.suggested_activities),
+    }))
+    .filter((suggestion) => suggestion.title || suggestion.rationale)
+
+  return (
+    <>
+      {summary && <p className="insight-summary">{summary}</p>}
+      <div className="career-suggestions">
+        {suggestions.map((suggestion, index) => (
+          <div key={`${index}-${suggestion.title}`} className="career-suggestion">
+            {suggestion.title && <h3>{suggestion.title}</h3>}
+            {suggestion.rationale && <p>{suggestion.rationale}</p>}
+            {suggestion.subjects.length > 0 && (
+              <div className="tag-pills">
+                {suggestion.subjects.map((subject) => (
+                  <span key={subject} className="tag-pill">
+                    {subject}
+                  </span>
+                ))}
+              </div>
+            )}
+            {suggestion.activities.length > 0 && (
+              <ul>
+                {suggestion.activities.map((activity) => (
+                  <li key={activity}>{activity}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
+      {growthAreas.length > 0 && (
+        <p className="growth-areas">
+          <strong>Growth areas: </strong>
+          {growthAreas.join(', ')}
+        </p>
+      )}
+      {disclaimer && <p className="insight-disclaimer">{disclaimer}</p>}
+    </>
+  )
+}
 
 export function InsightsPage() {
   const { childId } = useParams<{ childId: string }>()
@@ -24,7 +91,8 @@ export function InsightsPage() {
 
   const generateMutation = useMutation({
     mutationFn: () => insightsApi.generate(childId as string),
-    onSuccess: () => {
+    // A failed generation is still saved as a `failed` row, so refresh history either way.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['insights', childId] })
     },
   })
@@ -77,46 +145,17 @@ export function InsightsPage() {
             <li key={insight.id} className="insight-card card">
               <p className="insight-date">{new Date(insight.created_at).toLocaleString()}</p>
 
+              {insight.status === 'pending' && (
+                <p className="dashboard-subtitle">
+                  <Spinner label="Still generating… refresh in a minute to see the result." />
+                </p>
+              )}
+
               {insight.status === 'failed' && (
                 <p className="form-error">{insight.error_message ?? 'This insight could not be generated.'}</p>
               )}
 
-              {insight.status === 'completed' && insight.result_json && (
-                <>
-                  <p className="insight-summary">{insight.result_json.summary}</p>
-                  <div className="career-suggestions">
-                    {insight.result_json.career_suggestions.map((suggestion) => (
-                      <div key={suggestion.title} className="career-suggestion">
-                        <h3>{suggestion.title}</h3>
-                        <p>{suggestion.rationale}</p>
-                        {suggestion.related_subjects.length > 0 && (
-                          <div className="tag-pills">
-                            {suggestion.related_subjects.map((subject) => (
-                              <span key={subject} className="tag-pill">
-                                {subject}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        {suggestion.suggested_activities.length > 0 && (
-                          <ul>
-                            {suggestion.suggested_activities.map((activity) => (
-                              <li key={activity}>{activity}</li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {insight.result_json.growth_areas.length > 0 && (
-                    <p className="growth-areas">
-                      <strong>Growth areas: </strong>
-                      {insight.result_json.growth_areas.join(', ')}
-                    </p>
-                  )}
-                  <p className="insight-disclaimer">{insight.result_json.disclaimer}</p>
-                </>
-              )}
+              {insight.status === 'completed' && insight.result_json && <InsightResultView result={insight.result_json} />}
             </li>
           ))}
         </ul>

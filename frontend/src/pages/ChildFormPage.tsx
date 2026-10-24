@@ -8,7 +8,7 @@ import { ApiError } from '../api/client'
 import { AppHeader } from '../components/AppHeader'
 import { Spinner } from '../components/Spinner'
 import { TagInput } from '../components/TagInput'
-import { childProfileSchema, MAX_BIRTH_YEAR, MIN_BIRTH_YEAR, type ChildProfileFormValues } from '../schemas/childProfileSchema'
+import { birthYearBounds, childProfileSchema, type ChildProfileFormValues } from '../schemas/childProfileSchema'
 import type { Child } from '../api/types'
 import type { FieldError, FieldErrors } from 'react-hook-form'
 
@@ -29,7 +29,7 @@ function toFormValues(child?: Child): ChildProfileFormValues {
   if (!child) {
     return {
       first_name: '',
-      birth_year: MAX_BIRTH_YEAR,
+      birth_year: birthYearBounds().max,
       grade_level: '',
       interests: [],
       strengths: [],
@@ -54,6 +54,7 @@ export function ChildFormPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [serverError, setServerError] = useState<string | null>(null)
+  const yearBounds = birthYearBounds()
 
   const { data: existingChild, isLoading: isLoadingChild } = useQuery({
     queryKey: ['children', childId],
@@ -111,6 +112,11 @@ export function ChildFormPage() {
             <p className="auth-subtitle">
               Only what's needed to generate helpful, age-appropriate insights — no photos, no school name.
             </p>
+            <p className="auth-subtitle">
+              To generate insights, the AI service (a cloud-hosted model) receives only an approximate age, the grade,
+              interests, strengths and favorite subjects. It never receives your child's name or your notes. Avoid
+              putting names or other identifying details in those fields.
+            </p>
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <div className="field-row">
                 <label>
@@ -123,8 +129,8 @@ export function ChildFormPage() {
                   Birth year
                   <input
                     type="number"
-                    min={MIN_BIRTH_YEAR}
-                    max={MAX_BIRTH_YEAR}
+                    min={yearBounds.min}
+                    max={yearBounds.max}
                     {...register('birth_year', { valueAsNumber: true })}
                   />
                   {errors.birth_year && <span className="field-error">{errors.birth_year.message}</span>}
@@ -179,7 +185,7 @@ export function ChildFormPage() {
               </label>
 
               <label>
-                Notes for the AI (optional)
+                Private notes (optional, not sent to the AI)
                 <textarea rows={3} maxLength={1000} {...register('notes')} />
               </label>
 

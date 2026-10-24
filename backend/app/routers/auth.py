@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -87,8 +88,15 @@ async def refresh(
             db, refresh_token, request.headers.get("user-agent")
         )
     except auth_service.InvalidRefreshTokenError:
-        _clear_auth_cookies(response)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired, please log in again")
+        # Return (not raise) the 401: headers set on the injected `response` are
+        # discarded when an HTTPException is raised, so the cookie deletions must
+        # be attached to the response that is actually sent.
+        error_response = JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Session expired, please log in again"},
+        )
+        _clear_auth_cookies(error_response)
+        return error_response
 
     _set_auth_cookies(response, new_access_token, new_refresh_token)
     return MessageResponse(message="Token refreshed")

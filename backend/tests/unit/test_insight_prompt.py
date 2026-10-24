@@ -40,6 +40,15 @@ def test_user_prompt_never_contains_child_name():
     assert "robotics" in prompt
 
 
+def test_notes_never_reach_snapshot_or_prompt():
+    child = _make_child(notes="Private note mentioning VeryUniqueNoteXYZ")
+    snapshot = _snapshot_profile(child)
+    prompt = _build_user_prompt(snapshot)
+
+    assert "notes" not in snapshot
+    assert "VeryUniqueNoteXYZ" not in prompt
+
+
 def test_user_prompt_handles_missing_optional_fields():
     child = _make_child(favorite_subjects=None, notes=None, grade_level=None, interests=[], strengths=[])
     snapshot = _snapshot_profile(child)

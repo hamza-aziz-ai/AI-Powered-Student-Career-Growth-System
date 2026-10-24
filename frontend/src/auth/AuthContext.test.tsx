@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -39,6 +40,17 @@ function TestConsumer() {
   )
 }
 
+function renderWithProviders(queryClient = new QueryClient()) {
+  render(
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <TestConsumer />
+      </AuthProvider>
+    </QueryClientProvider>,
+  )
+  return queryClient
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -47,11 +59,7 @@ describe('AuthProvider', () => {
   it('starts loading then becomes unauthenticated when /me fails with 401', async () => {
     mockedAuthApi.me.mockRejectedValue(new ApiError(401, 'Not authenticated'))
 
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>,
-    )
+    renderWithProviders()
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'))
     expect(screen.getByTestId('user')).toHaveTextContent('none')
@@ -60,11 +68,7 @@ describe('AuthProvider', () => {
   it('becomes authenticated when /me succeeds', async () => {
     mockedAuthApi.me.mockResolvedValue(testUser)
 
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>,
-    )
+    renderWithProviders()
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('authenticated'))
     expect(screen.getByTestId('user')).toHaveTextContent('Test Parent')
@@ -75,11 +79,7 @@ describe('AuthProvider', () => {
     mockedAuthApi.login.mockResolvedValue(testUser)
     const user = userEvent.setup()
 
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>,
-    )
+    renderWithProviders()
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'))
 
@@ -94,11 +94,7 @@ describe('AuthProvider', () => {
     mockedAuthApi.logout.mockResolvedValue({ message: 'Logged out' })
     const user = userEvent.setup()
 
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>,
-    )
+    renderWithProviders()
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('authenticated'))
 
@@ -106,5 +102,41 @@ describe('AuthProvider', () => {
 
     await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'))
     expect(screen.getByTestId('user')).toHaveTextContent('none')
+  })
+
+  it('logout() drops cached data so the next parent never sees it', async () => {
+    mockedAuthApi.me.mockResolvedValue(testUser)
+    mockedAuthApi.logout.mockResolvedValue({ message: 'Logged out' })
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(['children'], [{ id: 'child-1' }])
+    const user = userEvent.setup()
+
+    renderWithProviders(queryClient)
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('authenticated'))
+
+    await user.click(screen.getByText('logout'))
+
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('unauthenticated'))
+    expect(queryClient.getQueryData(['children'])).toBeUndefined()
+  })
+
+  it('ignores a slow startup session check that finishes after a login', async () => {
+    let rejectMe: (err: unknown) => void = () => {}
+    mockedAuthApi.me.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectMe = reject
+      }),
+    )
+    mockedAuthApi.login.mockResolvedValue(testUser)
+    const user = userEvent.setup()
+
+    renderWithProviders()
+    await user.click(screen.getByText('login'))
+    await waitFor(() => expect(screen.getByTestId('status')).toHaveTextContent('authenticated'))
+
+    rejectMe(new ApiError(401, 'Not authenticated'))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.getByTestId('status')).toHaveTextContent('authenticated')
+    expect(screen.getByTestId('user')).toHaveTextContent('Test Parent')
   })
 })

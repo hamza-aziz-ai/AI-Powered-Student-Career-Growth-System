@@ -14,7 +14,11 @@ router = APIRouter(prefix="/api/children/{child_id}/insights", tags=["insights"]
 
 
 @router.post("", response_model=CareerInsightRead, status_code=status.HTTP_201_CREATED)
-@limiter.limit("10/hour")
+# A fixed scope makes this one budget per parent across all their children. A plain
+# @limiter.limit would scope by URL, i.e. a separate 10/hour for every child_id.
+# ponytail: in-memory storage, per process; move to Redis storage when running more
+# than one worker or instance.
+@limiter.shared_limit("10/hour", scope="insight-generation")
 async def generate_insight(
     request: Request,
     child: Child = Depends(get_owned_child_or_404),
@@ -22,11 +26,16 @@ async def generate_insight(
 ):
     try:
         return await insight_service.generate_insight_for_child(db, child)
-    except insight_service.InsightGenerationFailedError:
+    except insight_service.InsightGenerationFailedError as exc:
+        if exc.unexpected:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Something went wrong generating this insight. Please try again.",
+            ) from None
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Insight generation is temporarily unavailable, please try again shortly.",
-        )
+        ) from None
 
 
 @router.get("", response_model=list[CareerInsightRead])

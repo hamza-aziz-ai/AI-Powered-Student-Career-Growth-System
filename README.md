@@ -50,6 +50,8 @@ npm run dev
 
 The Vite dev server (http://localhost:5173) proxies `/api` to the backend on port 8000, so cookies and CORS work the same as in production. Make sure `ollama serve` is running before generating insights.
 
+`GET /api/health` reports liveness only; `GET /api/ready` also checks PostgreSQL and Ollama and returns 503 if either is down. The interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are only served when `ENVIRONMENT=development`. Outside development the backend refuses to start unless `JWT_SECRET_KEY` is a real random secret of at least 32 characters. `ENVIRONMENT` defaults to `development`, which also turns off the `Secure` cookie flag, so any deployment must set `ENVIRONMENT` to something else (for example `production`).
+
 ## Tests
 
 Backend (from `backend/`, requires Postgres running — a `<db>_test` database is created automatically):
@@ -76,6 +78,6 @@ docker-compose.yml   Postgres via Docker — not currently used, kept for later
 
 - Children never authenticate directly; only parents have accounts.
 - Child profiles collect only what's needed for insights: first name, birth **year** (not full DOB), grade, interest/strength tags, optional notes — no photos, no school name.
-- The AI prompt sent to Ollama deliberately excludes the child's name (age band + tags only), since `gpt-oss:120b-cloud` is a cloud-hosted model and that request leaves the machine.
+- The AI prompt sent to Ollama contains only an approximate age, the grade level, and the interest, strength and favorite-subject tags, since `gpt-oss:120b-cloud` is a cloud-hosted model and that request leaves the machine. It never includes the child's name or the parent's private notes. Grade and tags are still parent-typed text, so this is data minimisation rather than anonymisation; the child form tells parents not to put identifying details there.
 - Auth uses httpOnly, Secure (in non-dev environments), SameSite=Strict cookies — tokens are never exposed to frontend JavaScript.
 - Application logs never include child PII (name, notes, profile snapshots, or AI output) — see `backend/app/core/logging.py`.

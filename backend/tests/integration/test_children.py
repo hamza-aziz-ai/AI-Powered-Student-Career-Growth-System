@@ -2,6 +2,9 @@ from datetime import date
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.child import Child
 
 pytestmark = pytest.mark.asyncio
 
@@ -113,3 +116,53 @@ async def test_birth_year_out_of_range_rejected(client: AsyncClient, unique_emai
     await _register(client, unique_email)
     resp = await client.post("/api/children", json=_child_payload(birth_year=1990))
     assert resp.status_code == 422
+
+
+async def test_patch_rejects_explicit_null_on_required_fields(client: AsyncClient, unique_email: str):
+    await _register(client, unique_email)
+    child_id = (await client.post("/api/children", json=_child_payload(notes="note"))).json()["id"]
+
+    for field in ("first_name", "birth_year", "interests", "strengths"):
+        resp = await client.patch(f"/api/children/{child_id}", json={field: None})
+        assert resp.status_code == 422, f"{field}: {resp.status_code} {resp.text}"
+
+    # Nullable fields can still be cleared.
+    resp = await client.patch(f"/api/children/{child_id}", json={"notes": None, "grade_level": None})
+    assert resp.status_code == 200
+    assert resp.json()["notes"] is None
+
+
+async def test_patch_birth_year_out_of_range_rejected(client: AsyncClient, unique_email: str):
+    await _register(client, unique_email)
+    child_id = (await client.post("/api/children", json=_child_payload())).json()["id"]
+    resp = await client.patch(f"/api/children/{child_id}", json={"birth_year": 1990})
+    assert resp.status_code == 422
+
+
+async def test_birth_year_window_uses_current_date(client: AsyncClient, unique_email: str, monkeypatch):
+    # The window must be computed per request, not frozen at import time.
+    from app.schemas import child as child_schema
+
+    await _register(client, unique_email)
+    max_year_now = date.today().year - 3
+    monkeypatch.setattr(child_schema, "birth_year_bounds", lambda: (max_year_now - 15, max_year_now + 1))
+
+    resp = await client.post("/api/children", json=_child_payload(birth_year=max_year_now + 1))
+    assert resp.status_code == 201, resp.text
+
+
+async def test_profile_outside_current_window_stays_readable(
+    client: AsyncClient, db_session: AsyncSession, unique_email: str
+):
+    await _register(client, unique_email)
+    parent_id = (await client.get("/api/auth/me")).json()["id"]
+
+    # A profile created years ago, whose birth year is now outside the input window.
+    old_child = Child(
+        parent_id=parent_id, first_name="Grown", birth_year=date.today().year - 25, interests=[], strengths=[]
+    )
+    db_session.add(old_child)
+    await db_session.commit()
+
+    assert (await client.get(f"/api/children/{old_child.id}")).status_code == 200
+    assert (await client.get("/api/children")).status_code == 200
