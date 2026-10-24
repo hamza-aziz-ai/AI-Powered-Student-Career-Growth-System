@@ -19,11 +19,13 @@ argon2-cffi = "*"
 pyjwt = "*"
 httpx = "*"
 slowapi = "*"
+email-validator = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-asyncio = "*"
 jupyter = "*"
+google-genai = "*"
 graphifyy = "*"
 
 [requires]
